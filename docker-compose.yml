@@ -1,0 +1,43 @@
+version: '3.8'  # Можете удалить эту строку если хотите
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: binary-search-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - app-network
+    # Добавляем healthcheck для Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  app:
+    build: .
+    container_name: binary-search-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy  # Ждем пока Redis станет healthy
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SEARCH_VALUE=58
+    restart: unless-stopped
+    networks:
+      - app-network
+    # Опционально: healthcheck для app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  app-network:
+    driver: bridge
